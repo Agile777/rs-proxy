@@ -105,31 +105,55 @@ app.post('/api/mie', async (req, res) => {
       });
     }
 
-    // aLogonXml - Remove XML declaration from inner XML (MIE doesn't want it inside CDATA)
+    // aLogonXml - MIE's EXACT format from their SOAP UI documentation
     const aLogonXml = aLogonXmlOverride || 
-      `<Logon>` +
-      `<ClientKey>${clientKey ?? ''}</ClientKey>` +
-      `<AgentKey>${agentKey ?? ''}</AgentKey>` +
-      `<Username>${username ?? ''}</Username>` +
+      `<xml><Token>` +
+      `<UserName>${username ?? ''}</UserName>` +
       `<Password>${password}</Password>` +
       `<Source>${source ?? ''}</Source>` +
-      `</Logon>`;
+      `</Token></xml>`;
 
-    // aArgument - Remove XML declaration from inner XML
+    // aArgument - MIE's EXACT Request format from their documentation
     const checkTypes = Array.isArray(payload.checkTypes) ? payload.checkTypes : [];
+    const remoteKey = payload.remoteKey || `RS_${Date.now()}`;
+    const currentDate = new Date().toISOString();
+    
     const aArgument = aArgumentOverride || 
-      `<Request>` +
+      `<xml><Request>` +
+      `<ClientKey>${clientKey ?? ''}</ClientKey>` +
+      `<AgentClient>${clientKey ?? ''}</AgentClient>` +
+      `<AgentKey>${agentKey ?? ''}</AgentKey>` +
+      `<RemoteRequest>${remoteKey}</RemoteRequest>` +
+      `<OrderNumber></OrderNumber>` +
+      `<RequestReason></RequestReason>` +
+      `<Note></Note>` +
+      `<FirstNames>${payload.firstName ?? ''}</FirstNames>` +
+      `<Surname>${payload.lastName ?? ''}</Surname>` +
+      `<MaidenName></MaidenName>` +
       `<IdNumber>${payload.idNumber ?? ''}</IdNumber>` +
-      `<FirstName>${payload.firstName ?? ''}</FirstName>` +
-      `<LastName>${payload.lastName ?? ''}</LastName>` +
-      (payload.dateOfBirth ? `<DateOfBirth>${payload.dateOfBirth}</DateOfBirth>` : '') +
-      (payload.email ? `<Email>${payload.email}</Email>` : '') +
-      (payload.phone ? `<Phone>${payload.phone}</Phone>` : '') +
-      `<CheckTypes>` +
-      checkTypes.map(t => `<CheckType>${t}</CheckType>`).join('') +
-      `</CheckTypes>` +
+      `<Passport></Passport>` +
+      (payload.dateOfBirth ? `<DateOfBirth>${payload.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
+      `<ContactNumber>${payload.phone ?? ''}</ContactNumber>` +
+      `<PersonEmail>${payload.email ?? ''}</PersonEmail>` +
+      `<AlternateEmail></AlternateEmail>` +
       `<Source>${payload.source ?? source ?? ''}</Source>` +
-      `</Request>`;
+      `<EntityKind>P</EntityKind>` +
+      `<RemoteCaptureDate>${currentDate}</RemoteCaptureDate>` +
+      `<RemoteSendDate>${currentDate}</RemoteSendDate>` +
+      `<RemoteGroup></RemoteGroup>` +
+      `<PrerequisiteGroupList></PrerequisiteGroupList>` +
+      `<PrerequisiteImageList></PrerequisiteImageList>` +
+      `<ItemList>` +
+      checkTypes.map(t => 
+        `<Item>` +
+        `<RemoteItemKey></RemoteItemKey>` +
+        `<ItemTypeCode>${t.toUpperCase()}</ItemTypeCode>` +
+        `<Indemnity>false</Indemnity>` +
+        `<ItemInputGroupList></ItemInputGroupList>` +
+        `</Item>`
+      ).join('') +
+      `</ItemList>` +
+      `</Request></xml>`;
 
     const hasArgument = ['ksoputrequest', 'ksoputbranch', 'ksoputrequestredirect'].includes(String(method).toLowerCase());
 
