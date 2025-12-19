@@ -105,7 +105,8 @@ app.post('/api/mie', async (req, res) => {
       });
     }
 
-    const aLogonXml = aLogonXmlOverride || `<?xml version="1.0" encoding="utf-8"?>\n` +
+    // aLogonXml - Remove XML declaration from inner XML (MIE doesn't want it inside CDATA)
+    const aLogonXml = aLogonXmlOverride || 
       `<Logon>` +
       `<ClientKey>${clientKey ?? ''}</ClientKey>` +
       `<AgentKey>${agentKey ?? ''}</AgentKey>` +
@@ -114,8 +115,9 @@ app.post('/api/mie', async (req, res) => {
       `<Source>${source ?? ''}</Source>` +
       `</Logon>`;
 
+    // aArgument - Remove XML declaration from inner XML
     const checkTypes = Array.isArray(payload.checkTypes) ? payload.checkTypes : [];
-    const aArgument = aArgumentOverride || `<?xml version="1.0" encoding="utf-8"?>\n` +
+    const aArgument = aArgumentOverride || 
       `<Request>` +
       `<IdNumber>${payload.idNumber ?? ''}</IdNumber>` +
       `<FirstName>${payload.firstName ?? ''}</FirstName>` +
