@@ -148,7 +148,7 @@ app.post('/api/mie', async (req, res) => {
         `<Item>` +
         `<RemoteItemKey></RemoteItemKey>` +
         `<ItemTypeCode>${t.toUpperCase()}</ItemTypeCode>` +
-        `<Indemnity>false</Indemnity>` +
+        `<Indemnity>${payload.indemnityAcknowledged ? 'true' : 'false'}</Indemnity>` +
         `<ItemInputGroupList></ItemInputGroupList>` +
         `</Item>`
       ).join('') +
