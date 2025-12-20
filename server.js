@@ -67,16 +67,18 @@ app.get('/health', (req, res) => {
     port: PORT,
     time: new Date().toISOString(),
     cwd: process.cwd(),
-    secretsFileDetected: Boolean(secrets),
-    envVariablesDetected: {
-      MIE_PASSWORD: !!process.env.MIE_PASSWORD,
-      MIE_USERNAME: !!process.env.MIE_USERNAME,
-      SMS_CLIENT_SECRET: !!process.env.SMS_CLIENT_SECRET
-    }
+    secretsFileDetected: Boolean(secrets)
   });
 });
 
 // MIE proxy endpoint
+// Expected request shape (from 1_mie-background-checks.html):
+// {
+//   method: 'ksoPutRequest',
+//   soapUrl: 'https://.../epcvrequest.asmx',
+//   username, password (optional), clientKey, agentKey, source,
+//   payload: { idNumber, firstName, lastName, dateOfBirth, email, phone, checkTypes, source }
+// }
 app.post('/api/mie', async (req, res) => {
   try {
     const {
@@ -88,6 +90,7 @@ app.post('/api/mie', async (req, res) => {
       agentKey,
       source,
       payload = {},
+      // Advanced overrides if you already know the required XML formats:
       aLogonXml: aLogonXmlOverride,
       aArgument: aArgumentOverride
     } = req.body || {};
@@ -105,58 +108,32 @@ app.post('/api/mie', async (req, res) => {
       });
     }
 
-    // aLogonXml - MIE's EXACT format from their SOAP UI documentation
-    const aLogonXml = aLogonXmlOverride || 
-      `<xml><Token>` +
-      `<UserName>${username ?? ''}</UserName>` +
+    // Default aLogonXml format (can be overridden by aLogonXmlOverride)
+    const aLogonXml = aLogonXmlOverride || `<?xml version="1.0" encoding="utf-8"?>\n` +
+      `<Logon>` +
+      `<ClientKey>${clientKey ?? ''}</ClientKey>` +
+      `<AgentKey>${agentKey ?? ''}</AgentKey>` +
+      `<Username>${username ?? ''}</Username>` +
       `<Password>${password}</Password>` +
       `<Source>${source ?? ''}</Source>` +
-      `</Token></xml>`;
+      `</Logon>`;
 
-    // aArgument - MIE's EXACT Request format from their documentation
+    // Default aArgument format for PutRequest (can be overridden by aArgumentOverride)
+    // NOTE: Vendor-specific; adjust if MIE returns an "Invalid argument" style error.
     const checkTypes = Array.isArray(payload.checkTypes) ? payload.checkTypes : [];
-    const remoteKey = payload.remoteKey || `RS_${Date.now()}`;
-    const currentDate = new Date().toISOString();
-    
-    // Log indemnity status for debugging
-    console.log('🔍 Building MIE Request - indemnityAcknowledged:', payload.indemnityAcknowledged);
-    
-    const aArgument = aArgumentOverride || 
-      `<xml><Request>` +
-      `<ClientKey>${clientKey ?? ''}</ClientKey>` +
-      `<AgentClient>${clientKey ?? ''}</AgentClient>` +
-      `<AgentKey>${agentKey ?? ''}</AgentKey>` +
-      `<RemoteRequest>${remoteKey}</RemoteRequest>` +
-      `<OrderNumber></OrderNumber>` +
-      `<RequestReason></RequestReason>` +
-      `<Note></Note>` +
-      `<FirstNames>${payload.firstName ?? ''}</FirstNames>` +
-      `<Surname>${payload.lastName ?? ''}</Surname>` +
-      `<MaidenName></MaidenName>` +
+    const aArgument = aArgumentOverride || `<?xml version="1.0" encoding="utf-8"?>\n` +
+      `<Request>` +
       `<IdNumber>${payload.idNumber ?? ''}</IdNumber>` +
-      `<Passport></Passport>` +
-      (payload.dateOfBirth ? `<DateOfBirth>${payload.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
-      `<ContactNumber>${payload.phone ?? ''}</ContactNumber>` +
-      `<PersonEmail>${payload.email ?? ''}</PersonEmail>` +
-      `<AlternateEmail></AlternateEmail>` +
+      `<FirstName>${payload.firstName ?? ''}</FirstName>` +
+      `<LastName>${payload.lastName ?? ''}</LastName>` +
+      (payload.dateOfBirth ? `<DateOfBirth>${payload.dateOfBirth}</DateOfBirth>` : '') +
+      (payload.email ? `<Email>${payload.email}</Email>` : '') +
+      (payload.phone ? `<Phone>${payload.phone}</Phone>` : '') +
+      `<CheckTypes>` +
+      checkTypes.map(t => `<CheckType>${t}</CheckType>`).join('') +
+      `</CheckTypes>` +
       `<Source>${payload.source ?? source ?? ''}</Source>` +
-      `<EntityKind>P</EntityKind>` +
-      `<RemoteCaptureDate>${currentDate}</RemoteCaptureDate>` +
-      `<RemoteSendDate>${currentDate}</RemoteSendDate>` +
-      `<RemoteGroup></RemoteGroup>` +
-      `<PrerequisiteGroupList></PrerequisiteGroupList>` +
-      `<PrerequisiteImageList></PrerequisiteImageList>` +
-      `<ItemList>` +
-      checkTypes.map(t => 
-        `<Item>` +
-        `<RemoteItemKey></RemoteItemKey>` +
-        `<ItemTypeCode>${t.toUpperCase()}</ItemTypeCode>` +
-        `<Indemnity>${payload.indemnityAcknowledged ? 'true' : 'false'}</Indemnity>` +
-        `<ItemInputGroupList></ItemInputGroupList>` +
-        `</Item>`
-      ).join('') +
-      `</ItemList>` +
-      `</Request></xml>`;
+      `</Request>`;
 
     const hasArgument = ['ksoputrequest', 'ksoputbranch', 'ksoputrequestredirect'].includes(String(method).toLowerCase());
 
@@ -213,69 +190,7 @@ app.post('/api/mie', async (req, res) => {
   }
 });
 
-// SMS Portal API Proxy - Updated with new credentials and endpoints
-app.all('/api/sms/*', async (req, res) => {
-  try {
-    const secrets = loadLocalSecrets();
-    const clientId = process.env.SMS_CLIENT_ID || secrets?.SMS_CLIENT_ID || '041c9a63-6173-4122-9695-16f71a621482';
-    const clientSecret = process.env.SMS_CLIENT_SECRET || secrets?.SMS_CLIENT_SECRET || 'kiw9iKn9UUoi+wMG9o9JGBzHbEMEW0WE';
-
-    if (!clientId || !clientSecret) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Missing SMS credentials'
-      });
-    }
-
-    // Extract the path after /api/sms/
-    const smsPath = req.url.replace('/api/sms', '');
-    const smsUrl = `https://rest.smsportal.com${smsPath}`;
-
-    console.log('SMS Proxy Request:', {
-      method: req.method,
-      url: smsUrl,
-      hasAuth: true
-    });
-
-    // Create base64 auth header
-    const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
-    // Forward request to SMS Portal API with authentication
-    const response = await fetch(smsUrl, {
-      method: req.method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${authString}`
-      },
-      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined
-    });
-
-    const contentType = response.headers.get('content-type');
-    
-    // Handle JSON responses
-    if (contentType && contentType.includes('application/json')) {
-      const data = await response.json();
-      return res.status(response.status).json(data);
-    }
-    
-    // Handle text responses
-    const text = await response.text();
-    return res.status(response.status).send(text);
-
-  } catch (err) {
-    console.error('SMS proxy error:', err);
-    return res.status(500).json({ 
-      ok: false, 
-      error: err?.message || String(err),
-      stack: err?.stack 
-    });
-  }
-});
-
-// Listen on 0.0.0.0 for Render.com compatibility
-const host = process.env.RENDER ? '0.0.0.0' : '127.0.0.1';
-app.listen(PORT, host, () => {
-  console.log(`[rs-local-proxy] listening on http://${host}:${PORT}`);
-  console.log(`[rs-local-proxy] health: http://${host}:${PORT}/health`);
-  console.log(`[rs-local-proxy] Environment: ${process.env.RENDER ? 'Render.com' : 'Local'}`);
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`[rs-local-proxy] listening on http://127.0.0.1:${PORT}`);
+  console.log(`[rs-local-proxy] health: http://127.0.0.1:${PORT}/health`);
 });
