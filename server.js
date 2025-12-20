@@ -213,12 +213,12 @@ app.post('/api/mie', async (req, res) => {
   }
 });
 
-// SMS proxy endpoint (optional)
-app.post('/api/sms', async (req, res) => {
+// SMS Portal API Proxy - Updated with new credentials and endpoints
+app.all('/api/sms/*', async (req, res) => {
   try {
     const secrets = loadLocalSecrets();
-    const clientId = process.env.SMS_CLIENT_ID || secrets?.SMS_CLIENT_ID;
-    const clientSecret = process.env.SMS_CLIENT_SECRET || secrets?.SMS_CLIENT_SECRET;
+    const clientId = process.env.SMS_CLIENT_ID || secrets?.SMS_CLIENT_ID || '041c9a63-6173-4122-9695-16f71a621482';
+    const clientSecret = process.env.SMS_CLIENT_SECRET || secrets?.SMS_CLIENT_SECRET || 'kiw9iKn9UUoi+wMG9o9JGBzHbEMEW0WE';
 
     if (!clientId || !clientSecret) {
       return res.status(400).json({
@@ -227,25 +227,48 @@ app.post('/api/sms', async (req, res) => {
       });
     }
 
-    // Forward SMS request to SMS Portal API
-    const response = await fetch('https://rest.smsportal.com/v1/Authentication', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        clientId,
-        clientSecret,
-        ...req.body
-      })
+    // Extract the path after /api/sms/
+    const smsPath = req.url.replace('/api/sms', '');
+    const smsUrl = `https://rest.smsportal.com${smsPath}`;
+
+    console.log('SMS Proxy Request:', {
+      method: req.method,
+      url: smsUrl,
+      hasAuth: true
     });
 
-    const data = await response.json();
-    return res.json(data);
+    // Create base64 auth header
+    const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    // Forward request to SMS Portal API with authentication
+    const response = await fetch(smsUrl, {
+      method: req.method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${authString}`
+      },
+      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined
+    });
+
+    const contentType = response.headers.get('content-type');
+    
+    // Handle JSON responses
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      return res.status(response.status).json(data);
+    }
+    
+    // Handle text responses
+    const text = await response.text();
+    return res.status(response.status).send(text);
 
   } catch (err) {
     console.error('SMS proxy error:', err);
-    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+    return res.status(500).json({ 
+      ok: false, 
+      error: err?.message || String(err),
+      stack: err?.stack 
+    });
   }
 });
 
