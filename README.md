@@ -1,53 +1,130 @@
 # RS Proxy Server for Render.com
 
-This folder contains only the files needed to deploy your proxy server to Render.com.
+Proxy server for Retail Solutions integrations - handles CORS and API authentication for:
 
-## Files:
+- **MIE Background Checks** (SOAP API at qa.mie.co.za)
+- **SMS Portal** (REST API at rest.smsportal.com)
 
-- `server.js` - The proxy server (handles MIE and SMS API calls)
-- `package.json` - Node.js dependencies
-- `README.md` - This file
+**Both services work independently on the same server!**
 
-## Quick Deploy to Render.com:
+---
 
-### 1. Upload to GitHub:
+## 📁 Files to Upload to GitHub
 
-1. Go to https://github.com and sign in
-2. Create new repository: `rs-proxy`
-3. Upload these files: `server.js` and `package.json`
+Upload these 3 files to your GitHub repository `Agile777/rs-proxy`:
 
-### 2. Deploy on Render.com:
+1. ✅ `server.js` - Main proxy server (MIE + SMS endpoints)
+2. ✅ `package.json` - Dependencies
+3. ✅ `README.md` - This documentation
 
-1. Go to https://render.com and sign up (free)
-2. Click "New +" → "Web Service"
-3. Connect to your GitHub repository
-4. Configure:
-   - **Name**: rs-proxy
-   - **Environment**: Node
-   - **Build Command**: npm install
-   - **Start Command**: node server.js
-   - **Plan**: Free
+**After uploading, just add environment variables on Render.com (see below)**
 
-### 3. Add Environment Variables:
+---
 
-In Render dashboard, add these environment variables:
+## 🚀 Deployment Instructions
+
+### Step 1: Upload Files to GitHub
+
+Use GitHub Desktop or manual upload to push these 3 files to `Agile777/rs-proxy`
+
+### Step 2: Add Environment Variables on Render.com
+
+1. Go to: https://dashboard.render.com
+2. Select your `rs-proxy` service
+3. Click **Environment** tab
+4. Add the 6 variables below:
+
+### MIE Background Checks (4 variables - ALREADY SET ✅):
 
 ```
 MIE_USERNAME = style_professional_integration_qa
-MIE_PASSWORD = R3T@il5488
+MIE_PASSWORD = (your MIE password)
 MIE_CLIENT_KEY = 20408
 MIE_AGENT_KEY = 54
-MIE_EMAIL = brandon@retail-solutions.co.za
+```
+
+### SMS Portal (2 NEW variables - ADD THESE ⚠️):
+
+```
 SMS_CLIENT_ID = 71415477-3d64-4a68-b642-f182a9425402
 SMS_CLIENT_SECRET = ccd055fa-e1b7-4d08-bee2-b51f23ac8afe
 ```
 
-### 4. Get Your URL:
+5. Click **Save Changes**
+6. Wait ~2 minutes for auto-deploy
 
-After deployment, Render will give you a URL like:
-`https://rs-proxy.onrender.com`
+**Total: 6 environment variables**
 
-### 5. Update config.js:
+---
+
+## 🌐 Deployed Endpoints
+
+**GitHub Repo:** https://github.com/Agile777/rs-proxy  
+**Render URL:** https://rs-proxy-hi0e.onrender.com
+
+### Available Endpoints:
+
+- `GET /health` - Server health check (shows which env vars are loaded)
+- `POST /api/mie` - MIE Background Checks proxy (uses MIE\_\* variables)
+- `POST /api/sms` - SMS Portal proxy (uses SMS\_\* variables)
+
+---
+
+## ✅ Testing After Deployment
+
+### 1. Health Check:
+
+```
+GET https://rs-proxy-hi0e.onrender.com/health
+```
+
+**Expected:** Should show 6 environment variables detected
+
+### 2. MIE Endpoint (Should still work):
+
+From `1_mie-background-checks.html`, submit a background check.
+**Expected:** Success with RequestKey
+
+### 3. SMS Endpoint (Should now work):
+
+From `1_sms-portal.html`, load the page.
+**Expected:** Shows SMS balance and credits
+
+---
+
+## 🔄 Auto-Deploy Process
+
+Render is connected to your GitHub repo:
+
+1. You push changes to GitHub
+2. Render detects the push automatically
+3. Rebuilds and deploys (~2 minutes)
+4. Both MIE and SMS endpoints remain available during deployment
+
+---
+
+## 🛡️ Independence Guarantee
+
+**MIE and SMS are completely separate:**
+
+- Different endpoints: `/api/mie` vs `/api/sms`
+- Different credentials: `MIE_*` vs `SMS_*`
+- Different services: `qa.mie.co.za` vs `rest.smsportal.com`
+- **Adding SMS won't affect MIE functionality**
+
+---
+
+## 📞 Support
+
+For issues:
+
+1. Check Render logs: https://dashboard.render.com → Logs
+2. Test health endpoint to verify variables
+3. Verify each service independently
+
+- **Render Dashboard:** https://dashboard.render.com
+- **Render Logs:** Dashboard → Your Service → Logs tab
+- **Environment Vars:** Dashboard → Your Service → Environment tab
 
 In your main project's config.js, update:
 

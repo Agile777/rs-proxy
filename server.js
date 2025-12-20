@@ -118,6 +118,9 @@ app.post('/api/mie', async (req, res) => {
     const remoteKey = payload.remoteKey || `RS_${Date.now()}`;
     const currentDate = new Date().toISOString();
     
+    // Log indemnity status for debugging
+    console.log('🔍 Building MIE Request - indemnityAcknowledged:', payload.indemnityAcknowledged);
+    
     const aArgument = aArgumentOverride || 
       `<xml><Request>` +
       `<ClientKey>${clientKey ?? ''}</ClientKey>` +
