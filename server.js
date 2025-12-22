@@ -217,8 +217,8 @@ app.post('/api/mie', async (req, res) => {
 app.all('/api/sms/*', async (req, res) => {
   try {
     const secrets = loadLocalSecrets();
-    const clientId = process.env.SMS_CLIENT_ID || secrets?.SMS_CLIENT_ID || '041c9a63-6173-4122-9695-16f71a621482';
-    const clientSecret = process.env.SMS_CLIENT_SECRET || secrets?.SMS_CLIENT_SECRET || 'kiw9iKn9UUoi+wMG9o9JGBzHbEMEW0WE';
+    const clientId = process.env.SMS_CLIENT_ID || secrets?.SMS_CLIENT_ID || 'b0839bcb-89e2-4592-8cf8-3a265c1cc82f';
+    const clientSecret = process.env.SMS_CLIENT_SECRET || secrets?.SMS_CLIENT_SECRET || '3OVb1yFZdskv/YJfHZW1VBeQjH4yzfpC';
 
     if (!clientId || !clientSecret) {
       return res.status(400).json({
