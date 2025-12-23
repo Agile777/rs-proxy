@@ -83,20 +83,24 @@ class SMSAPIHandler {
             
             const data = await response.json();
             
-            if (response.ok && data.success) {
-                console.log('✅ Balance retrieved via proxy:', data);
-                return {
-                    balance: data.balance,
-                    currency: data.currency,
-                    data: data.data
-                };
-            } else {
-                console.error('❌ Balance fetch failed:', data);
-                if (response.status === 500 && data.type === 'proxy_error') {
-                    throw new Error('Proxy server error - please check if SMS proxy is running');
+            if (response.ok) {
+                // Balance API returns 200 with balance in response
+                if (data.balance !== undefined) {
+                    console.log('✅ Balance retrieved via proxy:', data.balance, 'credits');
+                    return {
+                        balance: data.balance,
+                        currency: data.currency || 'ZAR',
+                        data: data
+                    };
                 }
-                throw new Error(`Failed to get balance: ${data.error || response.status}`);
             }
+            
+            // If we reach here, something went wrong
+            console.error('❌ Balance fetch failed:', data);
+            if (response.status === 500 && data.type === 'proxy_error') {
+                throw new Error('Proxy server error - please check if SMS proxy is running');
+            }
+            throw new Error(`Failed to get balance: ${data.error || response.statusText}`);
             
         } catch (error) {
             console.error('🔥 Balance API Error:', error);
@@ -198,7 +202,8 @@ class SMSAPIHandler {
     }
     
     /**
-     * Format phone number for SMS Portal (South African format)
+     * Format phone number for SMS Portal (South African format - NO + symbol)
+     * SMS Portal requires: 27XXXXXXXXX (NOT +27XXXXXXXXX)
      */
     formatPhoneNumber(phone) {
         if (!phone) return '';
@@ -208,22 +213,22 @@ class SMSAPIHandler {
         
         // Handle South African numbers
         if (cleaned.startsWith('27')) {
-            // Already has country code
-            return `+${cleaned}`;
+            // Already has country code - return as is (no +)
+            return cleaned;
         } else if (cleaned.startsWith('0')) {
-            // Remove leading 0 and add SA country code
-            return `+27${cleaned.substring(1)}`;
+            // Remove leading 0 and add SA country code (no +)
+            return `27${cleaned.substring(1)}`;
         } else if (cleaned.length === 9) {
-            // 9 digits without leading 0, add SA country code
-            return `+27${cleaned}`;
+            // 9 digits without leading 0, add SA country code (no +)
+            return `27${cleaned}`;
         }
         
         // Default: assume it needs SA country code if no country code present
-        if (cleaned.length >= 9 && !cleaned.startsWith('+')) {
-            return `+27${cleaned}`;
+        if (cleaned.length >= 9 && !cleaned.startsWith('27')) {
+            return `27${cleaned}`;
         }
         
-        return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+        return cleaned;
     }
     
     /**
