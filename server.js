@@ -1,17 +1,6 @@
-import express from 'express';
-import cors from 'cors';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+console.error('This folder is deprecated.');
+console.error('Use the repo-root server.js for local + Render deployments.');
+process.exit(1);
 
 function loadLocalSecrets(){
   try {
@@ -279,5 +268,3 @@ app.listen(PORT, host, () => {
   console.log(`[rs-local-proxy] health: http://${host}:${PORT}/health`);
   console.log(`[rs-local-proxy] Environment: ${process.env.RENDER ? 'Render.com' : 'Local'}`);
 });
-
-
