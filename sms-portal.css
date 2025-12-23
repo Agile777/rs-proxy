@@ -1,0 +1,239 @@
+/* SMS Portal CSS - Custom styling for the SMS messaging system */
+
+/* Page-wide styling */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Card styling */
+.card {
+    border: none;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    border-bottom: none;
+}
+
+/* Form controls */
+.form-control:focus, .form-select:focus {
+    border-color: #6610f2;
+    box-shadow: 0 0 0 0.25rem rgba(102, 16, 242, 0.25);
+}
+
+/* Improve dropdown styling */
+.select2-container--default .select2-selection--multiple {
+    border-color: #dee2e6;
+    min-height: 38px;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+    border-color: #6610f2;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #6f42c1;
+    color: white;
+    border: none;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: white;
+    margin-right: 5px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #f8f9fa;
+}
+
+/* Button styling */
+.btn-primary {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: #6610f2;
+    border-color: #6610f2;
+}
+
+.btn-outline-primary {
+    color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.btn-outline-primary:hover {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.tag-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Navbar styling */
+.navbar-dark.bg-primary {
+    background-color: #6f42c1 !important;
+}
+
+/* SMS message preview styling */
+.message-preview {
+    background-color: #e9ecef;
+    border-radius: 1rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    position: relative;
+    max-width: 80%;
+}
+
+.message-preview:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 15px;
+    width: 0;
+    height: 0;
+    border: 10px solid transparent;
+    border-top-color: #e9ecef;
+    border-bottom: 0;
+    margin-left: -10px;
+    margin-bottom: -10px;
+}
+
+/* Recent SMS list styling */
+.sms-item {
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.sms-item:hover {
+    background-color: rgba(111, 66, 193, 0.05);
+    border-left-color: #6f42c1;
+}
+
+.sms-item .sms-time {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.sms-item .sms-status {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 1rem;
+}
+
+.sms-status-delivered {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.sms-status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.sms-status-failed {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* Character counter styling */
+#charCount.warning {
+    color: #fd7e14;
+    font-weight: bold;
+}
+
+#charCount.danger {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .tag-btn {
+        margin-top: 0.5rem;
+    }
+}
+
+/* Toast notifications */
+.toast-container {
+    z-index: 1050;
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* SMS Template tags styling */
+.template-tag {
+    background-color: #e2e3e5;
+    color: #41464b;
+    padding: 0.15rem 0.35rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+    font-family: monospace;
+}
+
+/* Dashboard metrics cards */
+.metric-card {
+    text-align: center;
+    padding: 1rem;
+}
+
+.metric-card .metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #6f42c1;
+}
+
+.metric-card .metric-title {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+/* Batch operations panel */
+.batch-operations {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #dee2e6;
+}
+
+/* Progress bars */
+.progress {
+    height: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+/* Toggle buttons */
+.btn-toggle {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Improved focus indicators for accessibility */
+a:focus, button:focus {
+    outline: 3px solid rgba(111, 66, 193, 0.25);
+    outline-offset: 2px;
+}

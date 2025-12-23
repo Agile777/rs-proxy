@@ -48,8 +48,9 @@ window.RETAIL_CONFIG = {
     
     // SMS API Configuration - SMS Portal
     SMS_API: {
-        CLIENT_ID: 'b0839bcb-89e2-4592-8cf8-3a265c1cc82f',
-        CLIENT_SECRET: '3OVb1yFZdskv/YJfHZW1VBeQjH4yzfpC',
+        // Credentials must NOT be exposed in the browser. Auth is handled by the Render proxy.
+        CLIENT_ID: null,
+        CLIENT_SECRET: null,
         BASE_URL: 'https://rest.smsportal.com',
         SENDER_ID: 'RetailSolutions',
         // Node.js proxy server (deployed on Render.com)
@@ -93,7 +94,7 @@ window.RETAIL_CONFIG = {
         },
 
         // Node.js proxy server (deployed on Render.com)
-        PROXY_URL: 'https://rs-proxy-hi0e.onrender.com/api/mie',
+        PROXY_URL: 'https://rs-proxy-1.onrender.com/api/mie',
 
         // Keep Production details for reference only (NOT ACTIVE until UAT sign-off)
         PRODUCTION: {

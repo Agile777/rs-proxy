@@ -10,8 +10,9 @@ class SMSAPIHandler {
             throw new Error('SMS API configuration not found');
         }
         
-    // Use local proxy server (configurable)
-    this.proxyBaseURL = this.config.PROXY_URL || 'http://127.0.0.1:3001/api/sms';
+    // Use Render proxy server by default (configurable via RETAIL_CONFIG.SMS_API.PROXY_URL)
+    // Avoid defaulting to localhost so GitHub/production doesn't accidentally hit a local dev proxy.
+    this.proxyBaseURL = this.config.PROXY_URL || 'https://rs-proxy-1.onrender.com/api/sms';
         
         // Debug logging
         console.log('🔧 SMS API Config:', {
