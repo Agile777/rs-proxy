@@ -64,6 +64,16 @@ function getBearerToken(req){
   return m && m[1] ? m[1].trim() : null;
 }
 
+function xmlEscape(value){
+  const s = String(value ?? '');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 async function verifySupabaseUser({ url, apikey, token }){
   const base = String(url || '').replace(/\/$/, '');
   const resp = await fetch(base + '/auth/v1/user', {
@@ -403,10 +413,10 @@ app.post('/api/mie', async (req, res) => {
     // aLogonXml - MIE's EXACT format from their SOAP UI documentation
     const aLogonXml = aLogonXmlOverride || 
       `<xml><Token>` +
-      `<UserName>${username ?? ''}</UserName>` +
-      `<Password>${password}</Password>` +
-      `<Source>${resolvedLoginSource}</Source>` +
-      `<Version>${version}</Version>` +
+      `<UserName>${xmlEscape(username ?? '')}</UserName>` +
+      `<Password>${xmlEscape(password)}</Password>` +
+      `<Source>${xmlEscape(resolvedLoginSource)}</Source>` +
+      `<Version>${xmlEscape(version)}</Version>` +
       `</Token></xml>`;
 
     // aArgument - Use pre-built request if provided, otherwise build from payload
@@ -417,45 +427,79 @@ app.post('/api/mie', async (req, res) => {
       const requestPayload = payload.request;
       const itemList = Array.isArray(requestPayload.itemCollection) ? requestPayload.itemCollection : [];
       const resolvedVersion = requestPayload.version ?? version;
-      
-      aArgument = `<xml><Request>` +
-        `<ClientKey>${requestPayload.clientKey ?? ''}</ClientKey>` +
-        `<AgentClient>${requestPayload.agentClient ?? ''}</AgentClient>` +
-        `<AgentKey>${requestPayload.agentKey ?? ''}</AgentKey>` +
-        `<RemoteRequest>RS_${Date.now()}</RemoteRequest>` +
-        `<OrderNumber></OrderNumber>` +
-        `<RequestReason></RequestReason>` +
-        `<Note></Note>` +
-        `<FirstNames>${requestPayload.candidate?.firstNames ?? ''}</FirstNames>` +
-        `<Surname>${requestPayload.candidate?.surname ?? ''}</Surname>` +
-        `<MaidenName></MaidenName>` +
-        `<IdNumber>${requestPayload.candidate?.idNumber ?? ''}</IdNumber>` +
-        `<Passport></Passport>` +
-        (requestPayload.candidate?.dateOfBirth ? `<DateOfBirth>${requestPayload.candidate.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
-        `<ContactNumber>${requestPayload.candidate?.contact ?? ''}</ContactNumber>` +
-        `<PersonEmail>${requestPayload.candidate?.email ?? ''}</PersonEmail>` +
-        `<AlternateEmail></AlternateEmail>` +
-        `<Version>${resolvedVersion}</Version>` +
-        `<Source>${requestSource}</Source>` +
-        `<EntityKind>P</EntityKind>` +
-        `<RemoteCaptureDate>${new Date().toISOString()}</RemoteCaptureDate>` +
-        `<RemoteSendDate>${new Date().toISOString()}</RemoteSendDate>` +
-        `<RemoteGroup></RemoteGroup>` +
-        `<PrerequisiteGroupList></PrerequisiteGroupList>` +
-        `<PrerequisiteImageList></PrerequisiteImageList>` +
-        `<ItemList>` +
-        itemList.map(item => {
-          const code = item.itemTypeCode || item.ItemTypeCode || item.itemType || item.ItemType || '';
-          const ind = item.indemnity === true || item.indemnity === 'true' || item.indemnity === '1' || item.indemnity === 'Electronic' || item.Indemnity === 'true' ? 'true' : 'false';
+      const isoNow = new Date().toISOString();
+
+      const safeClientKey = xmlEscape(requestPayload.clientKey ?? '');
+      const safeAgentClient = xmlEscape(requestPayload.agentClient ?? requestPayload.clientKey ?? '');
+      const safeAgentKey = xmlEscape(requestPayload.agentKey ?? '');
+      const safeRemoteRequest = xmlEscape(`RS_${Date.now()}`);
+      const safeOrderNumber = xmlEscape(requestPayload.orderNumber ?? '');
+      const safeRequestReason = xmlEscape(requestPayload.requestReason ?? '');
+      const safeNote = xmlEscape(requestPayload.note ?? '');
+      const safeFirstNames = xmlEscape(requestPayload.candidate?.firstNames ?? '');
+      const safeSurname = xmlEscape(requestPayload.candidate?.surname ?? '');
+      const safeMaidenName = xmlEscape(requestPayload.candidate?.maidenName ?? '');
+      const safeIdNumber = xmlEscape(requestPayload.candidate?.idNumber ?? '');
+      const safePassport = xmlEscape(requestPayload.candidate?.passport ?? '');
+      const safeDob = requestPayload.candidate?.dateOfBirth ? xmlEscape(requestPayload.candidate.dateOfBirth) : '';
+      const safeContact = xmlEscape(requestPayload.candidate?.contact ?? '');
+      const safeEmail = xmlEscape(requestPayload.candidate?.email ?? '');
+      const safeAlternateEmail = xmlEscape(requestPayload.candidate?.alternateEmail ?? '');
+      const safeVersion = xmlEscape(resolvedVersion);
+      const safeSource = xmlEscape(requestSource);
+      const safeRemoteCaptureDate = xmlEscape(isoNow);
+      const safeRemoteSendDate = xmlEscape(isoNow);
+      const safeRemoteGroup = xmlEscape(requestPayload.remoteGroup ?? '');
+      const safePrerequisiteGroupList = xmlEscape(requestPayload.prerequisiteGroupList ?? '');
+      const safePrerequisiteImageList = xmlEscape(requestPayload.prerequisiteImageList ?? '');
+
+      const itemXml = itemList
+        .map(item => {
+          const rawCode = item.itemTypeCode || item.ItemTypeCode || item.itemType || item.ItemType || '';
+          const normalizedCode = String(rawCode || '').trim().toUpperCase();
+          if (!normalizedCode) return null;
+          const indemnityRaw = item.indemnity ?? item.Indemnity;
+          const indBool = indemnityRaw === true || indemnityRaw === 'true' || indemnityRaw === '1' || String(indemnityRaw).toLowerCase() === 'electronic';
+          const ind = indBool ? 'true' : 'false';
           return (
             `<Item>` +
             `<RemoteItemKey></RemoteItemKey>` +
-            `<ItemTypeCode>${code}</ItemTypeCode>` +
+            `<ItemTypeCode>${xmlEscape(normalizedCode)}</ItemTypeCode>` +
             `<Indemnity>${ind}</Indemnity>` +
             `<ItemInputGroupList></ItemInputGroupList>` +
             `</Item>`
           );
-        }).join('') +
+        })
+        .filter(Boolean)
+        .join('');
+      
+      aArgument = `<xml><Request>` +
+        `<ClientKey>${safeClientKey}</ClientKey>` +
+        `<AgentClient>${safeAgentClient}</AgentClient>` +
+        `<AgentKey>${safeAgentKey}</AgentKey>` +
+        `<RemoteRequest>${safeRemoteRequest}</RemoteRequest>` +
+        `<OrderNumber>${safeOrderNumber}</OrderNumber>` +
+        `<RequestReason>${safeRequestReason}</RequestReason>` +
+        `<Note>${safeNote}</Note>` +
+        `<FirstNames>${safeFirstNames}</FirstNames>` +
+        `<Surname>${safeSurname}</Surname>` +
+        `<MaidenName>${safeMaidenName}</MaidenName>` +
+        `<IdNumber>${safeIdNumber}</IdNumber>` +
+        `<Passport>${safePassport}</Passport>` +
+        `<DateOfBirth>${safeDob}</DateOfBirth>` +
+        `<ContactNumber>${safeContact}</ContactNumber>` +
+        `<PersonEmail>${safeEmail}</PersonEmail>` +
+        `<AlternateEmail>${safeAlternateEmail}</AlternateEmail>` +
+        `<Version>${safeVersion}</Version>` +
+        `<Source>${safeSource}</Source>` +
+        `<EntityKind>P</EntityKind>` +
+        `<RemoteCaptureDate>${safeRemoteCaptureDate}</RemoteCaptureDate>` +
+        `<RemoteSendDate>${safeRemoteSendDate}</RemoteSendDate>` +
+        `<RemoteGroup>${safeRemoteGroup}</RemoteGroup>` +
+        `<PrerequisiteGroupList>${safePrerequisiteGroupList}</PrerequisiteGroupList>` +
+        `<PrerequisiteImageList>${safePrerequisiteImageList}</PrerequisiteImageList>` +
+        `<ItemList>` +
+        itemXml +
         `</ItemList>` +
         `</Request></xml>`;
     } else if (!aArgument) {
@@ -464,44 +508,70 @@ app.post('/api/mie', async (req, res) => {
       const remoteKey = payload.remoteKey || `RS_${Date.now()}`;
       const currentDate = new Date().toISOString();
       
-      aArgument = 
-        `<xml><Request>` +
-        `<ClientKey>${clientKey ?? ''}</ClientKey>` +
-        `<AgentClient>${clientKey ?? ''}</AgentClient>` +
-        `<AgentKey>${agentKey ?? ''}</AgentKey>` +
-        `<RemoteRequest>${remoteKey}</RemoteRequest>` +
-        `<OrderNumber></OrderNumber>` +
-        `<RequestReason></RequestReason>` +
-        `<Note></Note>` +
-        `<FirstNames>${payload.firstName ?? ''}</FirstNames>` +
-        `<Surname>${payload.lastName ?? ''}</Surname>` +
-        `<MaidenName></MaidenName>` +
-        `<IdNumber>${payload.idNumber ?? ''}</IdNumber>` +
-        `<Passport></Passport>` +
-        (payload.dateOfBirth ? `<DateOfBirth>${payload.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
-        `<ContactNumber>${payload.phone ?? ''}</ContactNumber>` +
-        `<PersonEmail>${payload.email ?? ''}</PersonEmail>` +
-        `<AlternateEmail></AlternateEmail>` +
-        `<Version>${payload.version ?? version}</Version>` +
-        `<Source>${requestSource}</Source>` +
-        `<EntityKind>P</EntityKind>` +
-        `<RemoteCaptureDate>${currentDate}</RemoteCaptureDate>` +
-        `<RemoteSendDate>${currentDate}</RemoteSendDate>` +
-        `<RemoteGroup></RemoteGroup>` +
-        `<PrerequisiteGroupList></PrerequisiteGroupList>` +
-        `<PrerequisiteImageList></PrerequisiteImageList>` +
-        `<ItemList>` +
-        checkTypes.map(t => {
-          const code = String(t || '').trim().toUpperCase();
+      const safeClientKey = xmlEscape(clientKey ?? '');
+      const safeAgentClient = xmlEscape(agentKey ?? clientKey ?? '');
+      const safeAgentKey = xmlEscape(agentKey ?? '');
+      const safeRemoteKey = xmlEscape(remoteKey);
+      const safeOrderNumber = xmlEscape(payload.orderNumber ?? '');
+      const safeRequestReason = xmlEscape(payload.requestReason ?? '');
+      const safeNote = xmlEscape(payload.note ?? '');
+      const safeFirstNames = xmlEscape(payload.firstName ?? '');
+      const safeSurname = xmlEscape(payload.lastName ?? '');
+      const safeMaidenName = xmlEscape(payload.maidenName ?? '');
+      const safeIdNumber = xmlEscape(payload.idNumber ?? '');
+      const safePassport = xmlEscape(payload.passport ?? '');
+      const safeDob = payload.dateOfBirth ? xmlEscape(payload.dateOfBirth) : '';
+      const safeContact = xmlEscape(payload.phone ?? '');
+      const safeEmail = xmlEscape(payload.email ?? '');
+      const safeAltEmail = xmlEscape(payload.alternateEmail ?? '');
+      const safeVersion = xmlEscape(payload.version ?? version);
+      const safeSource = xmlEscape(requestSource);
+      const safeCurrentDate = xmlEscape(currentDate);
+
+      const itemXml = checkTypes
+        .map(t => {
+          const normalized = String(t || '').trim().toUpperCase();
+          if (!normalized) return null;
           return (
             `<Item>` +
             `<RemoteItemKey></RemoteItemKey>` +
-            `<ItemTypeCode>${code}</ItemTypeCode>` +
+            `<ItemTypeCode>${xmlEscape(normalized)}</ItemTypeCode>` +
             `<Indemnity>${payload.indemnityAcknowledged ? 'true' : 'false'}</Indemnity>` +
             `<ItemInputGroupList></ItemInputGroupList>` +
             `</Item>`
           );
-        }).join('') +
+        })
+        .filter(Boolean)
+        .join('');
+      
+      aArgument = 
+        `<xml><Request>` +
+        `<ClientKey>${safeClientKey}</ClientKey>` +
+        `<AgentClient>${safeAgentClient}</AgentClient>` +
+        `<AgentKey>${safeAgentKey}</AgentKey>` +
+        `<RemoteRequest>${safeRemoteKey}</RemoteRequest>` +
+        `<OrderNumber>${safeOrderNumber}</OrderNumber>` +
+        `<RequestReason>${safeRequestReason}</RequestReason>` +
+        `<Note>${safeNote}</Note>` +
+        `<FirstNames>${safeFirstNames}</FirstNames>` +
+        `<Surname>${safeSurname}</Surname>` +
+        `<MaidenName>${safeMaidenName}</MaidenName>` +
+        `<IdNumber>${safeIdNumber}</IdNumber>` +
+        `<Passport>${safePassport}</Passport>` +
+        `<DateOfBirth>${safeDob}</DateOfBirth>` +
+        `<ContactNumber>${safeContact}</ContactNumber>` +
+        `<PersonEmail>${safeEmail}</PersonEmail>` +
+        `<AlternateEmail>${safeAltEmail}</AlternateEmail>` +
+        `<Version>${safeVersion}</Version>` +
+        `<Source>${safeSource}</Source>` +
+        `<EntityKind>P</EntityKind>` +
+        `<RemoteCaptureDate>${safeCurrentDate}</RemoteCaptureDate>` +
+        `<RemoteSendDate>${safeCurrentDate}</RemoteSendDate>` +
+        `<RemoteGroup></RemoteGroup>` +
+        `<PrerequisiteGroupList></PrerequisiteGroupList>` +
+        `<PrerequisiteImageList></PrerequisiteImageList>` +
+        `<ItemList>` +
+        itemXml +
         `</ItemList>` +
         `</Request></xml>`;
     }
@@ -546,6 +616,8 @@ app.post('/api/mie', async (req, res) => {
     const resultText = extractTagText(respText, resultTag);
     const requestKey = extractRequestKey(resultText);
 
+    const statusCode = extractTagText(resultText, 'code');
+
     const responseBody = {
       ok: true,
       method,
@@ -556,7 +628,9 @@ app.post('/api/mie', async (req, res) => {
       rawSoapResponse: respText
     };
 
-    if (debugMode) {
+    const includeDebug = debugMode || (statusCode && statusCode !== '0');
+
+    if (includeDebug) {
       responseBody.debug = {
         logonXml: aLogonXml.replace(password, '***'),
         argumentXml: aArgument,
