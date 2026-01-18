@@ -376,6 +376,7 @@ app.post('/api/mie', async (req, res) => {
       clientKey,
       agentKey,
       source,
+      loginSource,
       payload = {},
       aLogonXml: aLogonXmlOverride,
       aArgument: aArgumentOverride
@@ -387,6 +388,8 @@ app.post('/api/mie', async (req, res) => {
     const secrets = loadLocalSecrets();
     const password = passwordFromBody || process.env.MIE_PASSWORD || secrets?.MIE_PASSWORD || secrets?.mie_password || null;
     const version = process.env.MIE_VERSION || secrets?.MIE_VERSION || secrets?.mie_version || '99.99.99';
+    const resolvedLoginSource = loginSource || payload?.loginSource || process.env.MIE_LOGIN_SOURCE || secrets?.MIE_LOGIN_SOURCE || source || 'SMARTWEB';
+    const requestSource = payload?.request?.source || payload?.source || source || 'STYLEPRO';
     if (!password) {
       return res.status(400).json({
         ok: false,
@@ -400,7 +403,7 @@ app.post('/api/mie', async (req, res) => {
       `<xml><Token>` +
       `<UserName>${username ?? ''}</UserName>` +
       `<Password>${password}</Password>` +
-      `<Source>${source ?? ''}</Source>` +
+      `<Source>${resolvedLoginSource}</Source>` +
       `<Version>${version}</Version>` +
       `</Token></xml>`;
 
@@ -409,28 +412,29 @@ app.post('/api/mie', async (req, res) => {
     
     if (!aArgument && payload.request) {
       // Frontend has already built the complete Request XML structure - use it directly
-      const req = payload.request;
-      const itemList = Array.isArray(req.itemCollection) ? req.itemCollection : [];
+      const requestPayload = payload.request;
+      const itemList = Array.isArray(requestPayload.itemCollection) ? requestPayload.itemCollection : [];
+      const resolvedVersion = requestPayload.version ?? version;
       
       aArgument = `<xml><Request>` +
-        `<ClientKey>${req.clientKey ?? ''}</ClientKey>` +
-        `<AgentClient>${req.agentClient ?? ''}</AgentClient>` +
-        `<AgentKey>${req.agentKey ?? ''}</AgentKey>` +
+        `<ClientKey>${requestPayload.clientKey ?? ''}</ClientKey>` +
+        `<AgentClient>${requestPayload.agentClient ?? ''}</AgentClient>` +
+        `<AgentKey>${requestPayload.agentKey ?? ''}</AgentKey>` +
         `<RemoteRequest>RS_${Date.now()}</RemoteRequest>` +
         `<OrderNumber></OrderNumber>` +
         `<RequestReason></RequestReason>` +
         `<Note></Note>` +
-        `<FirstNames>${req.candidate?.firstNames ?? ''}</FirstNames>` +
-        `<Surname>${req.candidate?.surname ?? ''}</Surname>` +
+        `<FirstNames>${requestPayload.candidate?.firstNames ?? ''}</FirstNames>` +
+        `<Surname>${requestPayload.candidate?.surname ?? ''}</Surname>` +
         `<MaidenName></MaidenName>` +
-        `<IdNumber>${req.candidate?.idNumber ?? ''}</IdNumber>` +
+        `<IdNumber>${requestPayload.candidate?.idNumber ?? ''}</IdNumber>` +
         `<Passport></Passport>` +
-        (req.candidate?.dateOfBirth ? `<DateOfBirth>${req.candidate.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
-        `<ContactNumber>${req.candidate?.contact ?? ''}</ContactNumber>` +
-        `<PersonEmail>${req.candidate?.email ?? ''}</PersonEmail>` +
+        (requestPayload.candidate?.dateOfBirth ? `<DateOfBirth>${requestPayload.candidate.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
+        `<ContactNumber>${requestPayload.candidate?.contact ?? ''}</ContactNumber>` +
+        `<PersonEmail>${requestPayload.candidate?.email ?? ''}</PersonEmail>` +
         `<AlternateEmail></AlternateEmail>` +
-        `<Version>${req.version ?? version}</Version>` +
-        `<Source>${source ?? 'STYLEPRO'}</Source>` +
+        `<Version>${resolvedVersion}</Version>` +
+        `<Source>${requestSource}</Source>` +
         `<EntityKind>P</EntityKind>` +
         `<RemoteCaptureDate>${new Date().toISOString()}</RemoteCaptureDate>` +
         `<RemoteSendDate>${new Date().toISOString()}</RemoteSendDate>` +
@@ -473,7 +477,7 @@ app.post('/api/mie', async (req, res) => {
         `<PersonEmail>${payload.email ?? ''}</PersonEmail>` +
         `<AlternateEmail></AlternateEmail>` +
         `<Version>${payload.version ?? version}</Version>` +
-        `<Source>${payload.source ?? source ?? ''}</Source>` +
+        `<Source>${requestSource}</Source>` +
         `<EntityKind>P</EntityKind>` +
         `<RemoteCaptureDate>${currentDate}</RemoteCaptureDate>` +
         `<RemoteSendDate>${currentDate}</RemoteSendDate>` +
