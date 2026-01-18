@@ -1,7 +1,3 @@
-console.error('This folder is deprecated.');
-console.error('Use the repo-root server.js for local + Render deployments.');
-process.exit(1);
-
 function loadLocalSecrets(){
   try {
     const candidates = [
@@ -268,3 +264,4 @@ app.listen(PORT, host, () => {
   console.log(`[rs-local-proxy] health: http://${host}:${PORT}/health`);
   console.log(`[rs-local-proxy] Environment: ${process.env.RENDER ? 'Render.com' : 'Local'}`);
 });
+
