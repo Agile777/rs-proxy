@@ -442,14 +442,18 @@ app.post('/api/mie', async (req, res) => {
         `<PrerequisiteGroupList></PrerequisiteGroupList>` +
         `<PrerequisiteImageList></PrerequisiteImageList>` +
         `<ItemList>` +
-        itemList.map(item => 
-          `<Item>` +
-          `<RemoteItemKey></RemoteItemKey>` +
-          `<ItemTypeCode>${item.itemType ?? item.ItemType ?? ''}</ItemTypeCode>` +
-          `<Indemnity>${item.indemnity === true || item.Indemnity === 'true' ? 'true' : 'false'}</Indemnity>` +
-          `<ItemInputGroupList></ItemInputGroupList>` +
-          `</Item>`
-        ).join('') +
+        itemList.map(item => {
+          const code = item.itemTypeCode || item.ItemTypeCode || item.itemType || item.ItemType || '';
+          const ind = item.indemnity === true || item.indemnity === 'true' || item.indemnity === '1' || item.indemnity === 'Electronic' || item.Indemnity === 'true' ? 'true' : 'false';
+          return (
+            `<Item>` +
+            `<RemoteItemKey></RemoteItemKey>` +
+            `<ItemTypeCode>${code}</ItemTypeCode>` +
+            `<Indemnity>${ind}</Indemnity>` +
+            `<ItemInputGroupList></ItemInputGroupList>` +
+            `</Item>`
+          );
+        }).join('') +
         `</ItemList>` +
         `</Request></xml>`;
     } else if (!aArgument) {
@@ -485,14 +489,17 @@ app.post('/api/mie', async (req, res) => {
         `<PrerequisiteGroupList></PrerequisiteGroupList>` +
         `<PrerequisiteImageList></PrerequisiteImageList>` +
         `<ItemList>` +
-        checkTypes.map(t => 
-          `<Item>` +
-          `<RemoteItemKey></RemoteItemKey>` +
-          `<ItemTypeCode>${t.toUpperCase()}</ItemTypeCode>` +
-          `<Indemnity>${payload.indemnityAcknowledged ? 'true' : 'false'}</Indemnity>` +
-          `<ItemInputGroupList></ItemInputGroupList>` +
-          `</Item>`
-        ).join('') +
+        checkTypes.map(t => {
+          const code = String(t || '').trim().toUpperCase();
+          return (
+            `<Item>` +
+            `<RemoteItemKey></RemoteItemKey>` +
+            `<ItemTypeCode>${code}</ItemTypeCode>` +
+            `<Indemnity>${payload.indemnityAcknowledged ? 'true' : 'false'}</Indemnity>` +
+            `<ItemInputGroupList></ItemInputGroupList>` +
+            `</Item>`
+          );
+        }).join('') +
         `</ItemList>` +
         `</Request></xml>`;
     }
