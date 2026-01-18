@@ -386,6 +386,7 @@ app.post('/api/mie', async (req, res) => {
 
     const secrets = loadLocalSecrets();
     const password = passwordFromBody || process.env.MIE_PASSWORD || secrets?.MIE_PASSWORD || secrets?.mie_password || null;
+    const version = process.env.MIE_VERSION || secrets?.MIE_VERSION || secrets?.mie_version || '99.99.99';
     if (!password) {
       return res.status(400).json({
         ok: false,
@@ -400,6 +401,7 @@ app.post('/api/mie', async (req, res) => {
       `<UserName>${username ?? ''}</UserName>` +
       `<Password>${password}</Password>` +
       `<Source>${source ?? ''}</Source>` +
+      `<Version>${version}</Version>` +
       `</Token></xml>`;
 
     // aArgument - Use pre-built request if provided, otherwise build from payload
@@ -427,6 +429,7 @@ app.post('/api/mie', async (req, res) => {
         `<ContactNumber>${req.candidate?.contact ?? ''}</ContactNumber>` +
         `<PersonEmail>${req.candidate?.email ?? ''}</PersonEmail>` +
         `<AlternateEmail></AlternateEmail>` +
+        `<Version>${req.version ?? version}</Version>` +
         `<Source>${source ?? 'STYLEPRO'}</Source>` +
         `<EntityKind>P</EntityKind>` +
         `<RemoteCaptureDate>${new Date().toISOString()}</RemoteCaptureDate>` +
@@ -469,6 +472,7 @@ app.post('/api/mie', async (req, res) => {
         `<ContactNumber>${payload.phone ?? ''}</ContactNumber>` +
         `<PersonEmail>${payload.email ?? ''}</PersonEmail>` +
         `<AlternateEmail></AlternateEmail>` +
+        `<Version>${payload.version ?? version}</Version>` +
         `<Source>${payload.source ?? source ?? ''}</Source>` +
         `<EntityKind>P</EntityKind>` +
         `<RemoteCaptureDate>${currentDate}</RemoteCaptureDate>` +
