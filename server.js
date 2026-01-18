@@ -382,6 +382,8 @@ app.post('/api/mie', async (req, res) => {
       aArgument: aArgumentOverride
     } = req.body || {};
 
+    const debugMode = payload?.debug === true || req.body?.debug === true || String(req.query?.debug || '').toLowerCase() === 'true';
+
     if (!method) return res.status(400).json({ ok: false, error: 'Missing method' });
     if (!soapUrl) return res.status(400).json({ ok: false, error: 'Missing soapUrl' });
 
@@ -544,7 +546,7 @@ app.post('/api/mie', async (req, res) => {
     const resultText = extractTagText(respText, resultTag);
     const requestKey = extractRequestKey(resultText);
 
-    return res.json({
+    const responseBody = {
       ok: true,
       method,
       soapAction,
@@ -552,7 +554,17 @@ app.post('/api/mie', async (req, res) => {
       reference: requestKey || null,
       result: resultText || null,
       rawSoapResponse: respText
-    });
+    };
+
+    if (debugMode) {
+      responseBody.debug = {
+        logonXml: aLogonXml.replace(password, '***'),
+        argumentXml: aArgument,
+        soapEnvelope: soapEnvelope.slice(0, 4000)
+      };
+    }
+
+    return res.json(responseBody);
   } catch (err) {
     console.error('MIE proxy error:', err);
     return res.status(500).json({ ok: false, error: err?.message || String(err) });
