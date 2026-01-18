@@ -411,7 +411,8 @@ app.post('/api/mie', async (req, res) => {
     const password = passwordFromBody || process.env.MIE_PASSWORD || secrets?.MIE_PASSWORD || secrets?.mie_password || null;
     const version = process.env.MIE_VERSION || secrets?.MIE_VERSION || secrets?.mie_version || '99.99.99';
     const resolvedLoginSource = loginSource || payload?.loginSource || process.env.MIE_LOGIN_SOURCE || secrets?.MIE_LOGIN_SOURCE || source || 'SMARTWEB';
-    const requestSource = payload?.request?.source || payload?.source || source || 'STYLEPRO';
+    // Default request source to login source if not explicitly provided
+    const requestSource = payload?.request?.source || payload?.source || source || resolvedLoginSource || 'SMARTWEB';
     if (!password) {
       return res.status(400).json({
         ok: false,
@@ -439,8 +440,13 @@ app.post('/api/mie', async (req, res) => {
       const resolvedVersion = requestPayload.version ?? version;
       const isoNow = new Date().toISOString();
 
+      const resolvedAgentClientRaw = requestPayload.agentClient;
+      const resolvedAgentClient = resolvedAgentClientRaw && /^\d+$/.test(String(resolvedAgentClientRaw))
+        ? resolvedAgentClientRaw
+        : (requestPayload.clientKey ?? clientKey ?? agentKey ?? '');
+
       const safeClientKey = xmlEscape(requestPayload.clientKey ?? '');
-      const safeAgentClient = xmlEscape(requestPayload.agentClient ?? requestPayload.clientKey ?? '');
+      const safeAgentClient = xmlEscape(resolvedAgentClient);
       const safeAgentKey = xmlEscape(requestPayload.agentKey ?? '');
       const safeRemoteRequest = xmlEscape(`RS_${Date.now()}`);
       const safeOrderNumber = xmlEscape(requestPayload.orderNumber ?? '');
@@ -519,7 +525,10 @@ app.post('/api/mie', async (req, res) => {
       const currentDate = new Date().toISOString();
       
       const safeClientKey = xmlEscape(clientKey ?? '');
-      const safeAgentClient = xmlEscape(agentKey ?? clientKey ?? '');
+      const resolvedAgentClient = (payload.agentClient && /^\d+$/.test(String(payload.agentClient)))
+        ? payload.agentClient
+        : (clientKey ?? agentKey ?? '');
+      const safeAgentClient = xmlEscape(resolvedAgentClient);
       const safeAgentKey = xmlEscape(agentKey ?? '');
       const safeRemoteKey = xmlEscape(remoteKey);
       const safeOrderNumber = xmlEscape(payload.orderNumber ?? '');
