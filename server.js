@@ -402,50 +402,92 @@ app.post('/api/mie', async (req, res) => {
       `<Source>${source ?? ''}</Source>` +
       `</Token></xml>`;
 
-    // aArgument - MIE's EXACT Request format from their documentation
-    const checkTypes = Array.isArray(payload.checkTypes) ? payload.checkTypes : [];
-    const remoteKey = payload.remoteKey || `RS_${Date.now()}`;
-    const currentDate = new Date().toISOString();
+    // aArgument - Use pre-built request if provided, otherwise build from payload
+    let aArgument = aArgumentOverride;
     
-    // Log indemnity status for debugging
-    console.log('🔍 Building MIE Request - indemnityAcknowledged:', payload.indemnityAcknowledged);
-    
-    const aArgument = aArgumentOverride || 
-      `<xml><Request>` +
-      `<ClientKey>${clientKey ?? ''}</ClientKey>` +
-      `<AgentClient>${clientKey ?? ''}</AgentClient>` +
-      `<AgentKey>${agentKey ?? ''}</AgentKey>` +
-      `<RemoteRequest>${remoteKey}</RemoteRequest>` +
-      `<OrderNumber></OrderNumber>` +
-      `<RequestReason></RequestReason>` +
-      `<Note></Note>` +
-      `<FirstNames>${payload.firstName ?? ''}</FirstNames>` +
-      `<Surname>${payload.lastName ?? ''}</Surname>` +
-      `<MaidenName></MaidenName>` +
-      `<IdNumber>${payload.idNumber ?? ''}</IdNumber>` +
-      `<Passport></Passport>` +
-      (payload.dateOfBirth ? `<DateOfBirth>${payload.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
-      `<ContactNumber>${payload.phone ?? ''}</ContactNumber>` +
-      `<PersonEmail>${payload.email ?? ''}</PersonEmail>` +
-      `<AlternateEmail></AlternateEmail>` +
-      `<Source>${payload.source ?? source ?? ''}</Source>` +
-      `<EntityKind>P</EntityKind>` +
-      `<RemoteCaptureDate>${currentDate}</RemoteCaptureDate>` +
-      `<RemoteSendDate>${currentDate}</RemoteSendDate>` +
-      `<RemoteGroup></RemoteGroup>` +
-      `<PrerequisiteGroupList></PrerequisiteGroupList>` +
-      `<PrerequisiteImageList></PrerequisiteImageList>` +
-      `<ItemList>` +
-      checkTypes.map(t => 
-        `<Item>` +
-        `<RemoteItemKey></RemoteItemKey>` +
-        `<ItemTypeCode>${t.toUpperCase()}</ItemTypeCode>` +
-        `<Indemnity>${payload.indemnityAcknowledged ? 'true' : 'false'}</Indemnity>` +
-        `<ItemInputGroupList></ItemInputGroupList>` +
-        `</Item>`
-      ).join('') +
-      `</ItemList>` +
-      `</Request></xml>`;
+    if (!aArgument && payload.request) {
+      // Frontend has already built the complete Request XML structure - use it directly
+      const req = payload.request;
+      const itemList = Array.isArray(req.itemCollection) ? req.itemCollection : [];
+      
+      aArgument = `<xml><Request>` +
+        `<ClientKey>${req.clientKey ?? ''}</ClientKey>` +
+        `<AgentClient>${req.agentClient ?? ''}</AgentClient>` +
+        `<AgentKey>${req.agentKey ?? ''}</AgentKey>` +
+        `<RemoteRequest>RS_${Date.now()}</RemoteRequest>` +
+        `<OrderNumber></OrderNumber>` +
+        `<RequestReason></RequestReason>` +
+        `<Note></Note>` +
+        `<FirstNames>${req.candidate?.firstNames ?? ''}</FirstNames>` +
+        `<Surname>${req.candidate?.surname ?? ''}</Surname>` +
+        `<MaidenName></MaidenName>` +
+        `<IdNumber>${req.candidate?.idNumber ?? ''}</IdNumber>` +
+        `<Passport></Passport>` +
+        (req.candidate?.dateOfBirth ? `<DateOfBirth>${req.candidate.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
+        `<ContactNumber>${req.candidate?.contact ?? ''}</ContactNumber>` +
+        `<PersonEmail>${req.candidate?.email ?? ''}</PersonEmail>` +
+        `<AlternateEmail></AlternateEmail>` +
+        `<Source>${source ?? 'STYLEPRO'}</Source>` +
+        `<EntityKind>P</EntityKind>` +
+        `<RemoteCaptureDate>${new Date().toISOString()}</RemoteCaptureDate>` +
+        `<RemoteSendDate>${new Date().toISOString()}</RemoteSendDate>` +
+        `<RemoteGroup></RemoteGroup>` +
+        `<PrerequisiteGroupList></PrerequisiteGroupList>` +
+        `<PrerequisiteImageList></PrerequisiteImageList>` +
+        `<ItemList>` +
+        itemList.map(item => 
+          `<Item>` +
+          `<RemoteItemKey></RemoteItemKey>` +
+          `<ItemTypeCode>${item.itemType ?? item.ItemType ?? ''}</ItemTypeCode>` +
+          `<Indemnity>${item.indemnity === true || item.Indemnity === 'true' ? 'true' : 'false'}</Indemnity>` +
+          `<ItemInputGroupList></ItemInputGroupList>` +
+          `</Item>`
+        ).join('') +
+        `</ItemList>` +
+        `</Request></xml>`;
+    } else if (!aArgument) {
+      // Fallback: build from raw payload fields (legacy/compatibility)
+      const checkTypes = Array.isArray(payload.checkTypes) ? payload.checkTypes : [];
+      const remoteKey = payload.remoteKey || `RS_${Date.now()}`;
+      const currentDate = new Date().toISOString();
+      
+      aArgument = 
+        `<xml><Request>` +
+        `<ClientKey>${clientKey ?? ''}</ClientKey>` +
+        `<AgentClient>${clientKey ?? ''}</AgentClient>` +
+        `<AgentKey>${agentKey ?? ''}</AgentKey>` +
+        `<RemoteRequest>${remoteKey}</RemoteRequest>` +
+        `<OrderNumber></OrderNumber>` +
+        `<RequestReason></RequestReason>` +
+        `<Note></Note>` +
+        `<FirstNames>${payload.firstName ?? ''}</FirstNames>` +
+        `<Surname>${payload.lastName ?? ''}</Surname>` +
+        `<MaidenName></MaidenName>` +
+        `<IdNumber>${payload.idNumber ?? ''}</IdNumber>` +
+        `<Passport></Passport>` +
+        (payload.dateOfBirth ? `<DateOfBirth>${payload.dateOfBirth}</DateOfBirth>` : '<DateOfBirth></DateOfBirth>') +
+        `<ContactNumber>${payload.phone ?? ''}</ContactNumber>` +
+        `<PersonEmail>${payload.email ?? ''}</PersonEmail>` +
+        `<AlternateEmail></AlternateEmail>` +
+        `<Source>${payload.source ?? source ?? ''}</Source>` +
+        `<EntityKind>P</EntityKind>` +
+        `<RemoteCaptureDate>${currentDate}</RemoteCaptureDate>` +
+        `<RemoteSendDate>${currentDate}</RemoteSendDate>` +
+        `<RemoteGroup></RemoteGroup>` +
+        `<PrerequisiteGroupList></PrerequisiteGroupList>` +
+        `<PrerequisiteImageList></PrerequisiteImageList>` +
+        `<ItemList>` +
+        checkTypes.map(t => 
+          `<Item>` +
+          `<RemoteItemKey></RemoteItemKey>` +
+          `<ItemTypeCode>${t.toUpperCase()}</ItemTypeCode>` +
+          `<Indemnity>${payload.indemnityAcknowledged ? 'true' : 'false'}</Indemnity>` +
+          `<ItemInputGroupList></ItemInputGroupList>` +
+          `</Item>`
+        ).join('') +
+        `</ItemList>` +
+        `</Request></xml>`;
+    }
 
     const hasArgument = ['ksoputrequest', 'ksoputbranch', 'ksoputrequestredirect'].includes(String(method).toLowerCase());
 
