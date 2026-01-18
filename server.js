@@ -1,3 +1,14 @@
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '1mb' }));
+
+
+
 import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
@@ -273,5 +284,6 @@ app.listen(PORT, host, () => {
   console.log(`[rs-local-proxy] health: http://${host}:${PORT}/health`);
   console.log(`[rs-local-proxy] Environment: ${process.env.RENDER ? 'Render.com' : 'Local'}`);
 });
+
 
 
