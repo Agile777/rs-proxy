@@ -74,6 +74,16 @@ function xmlEscape(value){
     .replace(/'/g, '&apos;');
 }
 
+function xmlUnescape(value){
+  if (value == null) return '';
+  return String(value)
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
 async function verifySupabaseUser({ url, apikey, token }){
   const base = String(url || '').replace(/\/$/, '');
   const resp = await fetch(base + '/auth/v1/user', {
@@ -613,10 +623,11 @@ app.post('/api/mie', async (req, res) => {
     }
 
     const resultTag = `${method}Result`;
-    const resultText = extractTagText(respText, resultTag);
-    const requestKey = extractRequestKey(resultText);
+    const resultTextRaw = extractTagText(respText, resultTag);
+    const decodedResultText = resultTextRaw && resultTextRaw.includes('&lt;') ? xmlUnescape(resultTextRaw) : resultTextRaw;
+    const requestKey = extractRequestKey(decodedResultText || resultTextRaw);
 
-    const statusCode = extractTagText(resultText, 'code');
+    const statusCode = extractTagText(decodedResultText || resultTextRaw, 'code');
 
     const responseBody = {
       ok: true,
@@ -624,17 +635,19 @@ app.post('/api/mie', async (req, res) => {
       soapAction,
       requestKey: requestKey || null,
       reference: requestKey || null,
-      result: resultText || null,
+      result: decodedResultText || resultTextRaw || null,
       rawSoapResponse: respText
     };
 
-    const includeDebug = debugMode || (statusCode && statusCode !== '0');
+    const includeDebug = debugMode || !statusCode || statusCode !== '0';
 
     if (includeDebug) {
       responseBody.debug = {
         logonXml: aLogonXml.replace(password, '***'),
         argumentXml: aArgument,
-        soapEnvelope: soapEnvelope.slice(0, 4000)
+        soapEnvelope: soapEnvelope.slice(0, 4000),
+        resultTextRaw: resultTextRaw || null,
+        resultTextDecoded: decodedResultText || null
       };
     }
 
