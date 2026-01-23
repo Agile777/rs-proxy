@@ -1,14 +1,30 @@
 {
-  "name": "rs-local-proxy",
+  "name": "rs-sms-proxy",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Proxy server for Retail Solutions MIE/SMS integrations",
+  "description": "SMS Portal proxy server for Retail Solutions - Separate from MIE system",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
+  "keywords": [
+    "sms",
+    "portal",
+    "proxy",
+    "retail"
+  ],
+  "author": "Retail Solutions",
+  "license": "ISC",
   "dependencies": {
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "node-fetch": "^2.7.0",
+    "@supabase/supabase-js": "^2.39.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
