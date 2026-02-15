@@ -41,6 +41,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+async function readJsonSafe(response) {
+  const text = await response.text();
+  if (!text) return { data: null, raw: '' };
+  try {
+    return { data: JSON.parse(text), raw: text };
+  } catch (_) {
+    return { data: null, raw: text };
+  }
+}
+
 // ============================================
 // SMS PROXY ENDPOINT - /api/sms
 // ============================================
@@ -95,13 +105,20 @@ app.post('/api/sms', async (req, res) => {
           })
         });
 
-        const data = await response.json();
+        const { data, raw } = await readJsonSafe(response);
 
         if (!response.ok) {
           console.error('❌ SMS Portal API Error:', response.status, data);
           return res.status(response.status).json({ 
             error: 'Failed to send SMS', 
-            details: data 
+            details: data || raw || null
+          });
+        }
+
+        if (!data) {
+          return res.status(502).json({
+            error: 'Invalid JSON response from SMS Portal',
+            details: raw || null
           });
         }
 
@@ -136,13 +153,20 @@ app.post('/api/sms', async (req, res) => {
           }
         });
 
-        const data = await response.json();
+        const { data, raw } = await readJsonSafe(response);
 
         if (!response.ok) {
           console.error('❌ Balance Error:', response.status, data);
           return res.status(response.status).json({ 
             error: 'Failed to get balance', 
-            details: data 
+            details: data || raw || null
+          });
+        }
+
+        if (!data) {
+          return res.status(502).json({
+            error: 'Invalid JSON response from SMS Portal',
+            details: raw || null
           });
         }
 
@@ -183,13 +207,20 @@ app.post('/api/sms', async (req, res) => {
           }
         });
 
-        const data = await response.json();
+        const { data, raw } = await readJsonSafe(response);
 
         if (!response.ok) {
           console.error('❌ Status Error:', response.status, data);
           return res.status(response.status).json({ 
             error: 'Failed to get message status', 
-            details: data 
+            details: data || raw || null
+          });
+        }
+
+        if (!data) {
+          return res.status(502).json({
+            error: 'Invalid JSON response from SMS Portal',
+            details: raw || null
           });
         }
 
