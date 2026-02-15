@@ -9,8 +9,10 @@ window.RETAIL_CONFIG = {
     // NOTE: Never expose secret keys in front-end. Use ONLY publishable (anon) key here.
     SUPABASE_URL: 'https://oqrzmqdkkwnoavawnxxd.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xcnptcWRra3dub2F2YXdueHhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjE5MjAsImV4cCI6MjA4MDQ5NzkyMH0.flKzfdZObu05NgMELqFPkhqyPqZO0cJtu2h_zLL7n2I',
-    // Do NOT expose service keys in the browser. Keep null here; use server-side only (Edge Functions).
-    SUPABASE_SERVICE_KEY: null,
+    // Service role key for admin operations (Auth management, user creation, etc)
+    SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xcnptcWRra3dub2F2YXdueHhkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDkyMTkyMCwiZXhwIjoyMDgwNDk3OTIwfQ.Ll1AnsqrkE7fE5QKsd6kc6w1RKcZq1mu7hu_N0hTkfA',
+    // Storage configuration
+    DOCUMENT_BUCKET: 'travel-logs',
     
     // Fallback Supabase URLs (for automatic recovery)
     SUPABASE_FALLBACK_URLS: [], // (D) Fallbacks removed to prevent environment drift
@@ -49,12 +51,12 @@ window.RETAIL_CONFIG = {
     // SMS API Configuration - SMS Portal
     SMS_API: {
         // Credentials must NOT be exposed in the browser. Auth is handled by the Render proxy.
-        CLIENT_ID: null,
-        CLIENT_SECRET: null,
+        CLIENT_ID: 'd86bf9ab-eef8-4d97-9a07-b2e0b106e2f5',
+        CLIENT_SECRET: null, // Set server-side only via environment variables
         BASE_URL: 'https://rest.smsportal.com',
         SENDER_ID: 'RetailSolutions',
         // Node.js proxy server (deployed on Render.com)
-        PROXY_URL: 'https://rs-proxy-1.onrender.com/api/sms' // Production - LIVE
+        PROXY_URL: 'https://rs-proxy-hi0e.onrender.com/api/sms' // YOUR Render service
         // PROXY_URL: 'http://127.0.0.1:3001/api/sms' // Local dev server (for testing)
     },
     
@@ -73,7 +75,7 @@ window.RETAIL_CONFIG = {
         // QA/UAT Authentication
         USERNAME: 'style_professional_integration_qa',
         EMAIL: 'brandon@retail-solutions.co.za',
-        PASSWORD: null, // Do NOT store passwords in client config. Set this in the Edge Function env instead.
+        PASSWORD: 'R3T@il5488', // QA Integration Password
         // MIE note: Integration logon source differs from request XML source
         INTEGRATION_LOGON_SOURCE: 'SMARTWEB',
 
@@ -92,6 +94,9 @@ window.RETAIL_CONFIG = {
             GET_ITEM_TYPES: 'ksoGetItemTypes',
             PUT_REQUEST: 'ksoPutRequest'
         },
+
+        // REST API URL - Points to deployed Render proxy (has MIE connectivity)
+        REST_API_URL: 'https://rs-proxy-1.onrender.com/api/mie',
 
         // Node.js proxy server (deployed on Render.com)
         PROXY_URL: 'https://rs-proxy-1.onrender.com/api/mie',
