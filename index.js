@@ -66,9 +66,9 @@ app.post('/api/sms', async (req, res) => {
       });
     }
 
-    // Get credentials from environment variables
-    const clientId = process.env.SMS_PORTAL_CLIENT_ID;
-    const clientSecret = process.env.SMS_PORTAL_CLIENT_SECRET;
+    // Get credentials from environment variables (with hardcoded fallback for testing)
+    const clientId = process.env.SMS_PORTAL_CLIENT_ID || '05764da0-ebbc-414f-a190-b405ec876654';
+    const clientSecret = process.env.SMS_PORTAL_CLIENT_SECRET || 'SG4CbGLy6dphO5NEWfZO3ny0xWMv3dmm';
     const baseUrl = process.env.SMS_PORTAL_BASE_URL || 'https://rest.smsportal.com';
     const sender = senderId || process.env.SMS_PORTAL_SENDER_ID || 'RetailSolutions';
 
