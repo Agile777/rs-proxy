@@ -18,8 +18,8 @@ app.get('/', (req, res) => {
 
 // SMS Portal API Configuration
 const SMS_CONFIG = {
-    CLIENT_ID: '71415477-3d64-4a68-b642-f182a9425402',
-    CLIENT_SECRET: 'ccd055fa-e1b7-4d08-bee2-b51f23ac8afe',
+    CLIENT_ID: '05764da0-ebbc-414f-a190-b405ec876654',
+    CLIENT_SECRET: 'SG4CbGLy6dphO5NEWfZO3ny0xWMv3dmm',
     BASE_URL: 'https://rest.smsportal.com'
 };
 
