@@ -4,29 +4,107 @@
  */
 
 class SMSAPIHandler {
-    constructor() {
+    constructor(demoMode = false) {
+        this.demoMode = demoMode;
         this.config = window.RETAIL_CONFIG?.SMS_API;
         if (!this.config) {
             throw new Error('SMS API configuration not found');
         }
+
+        // Precompute basic auth credentials for debug/test flows (not used by proxy)
+        if (this.config.CLIENT_ID && this.config.CLIENT_SECRET) {
+            const rawCreds = `${this.config.CLIENT_ID}:${this.config.CLIENT_SECRET}`;
+            try { this.credentials = btoa(rawCreds); } catch(_) { this.credentials = null; }
+        } else {
+            this.credentials = null;
+        }
         
     // Use Render proxy server by default (configurable via RETAIL_CONFIG.SMS_API.PROXY_URL)
     // Avoid defaulting to localhost so GitHub/production doesn't accidentally hit a local dev proxy.
-    this.proxyBaseURL = this.config.PROXY_URL || 'https://rs-proxy-1.onrender.com/api/sms';
+    this.proxyBaseURL = this.config.PROXY_URL || 'https://rs-proxy-hi0e.onrender.com/api/sms';
         
         // Debug logging
         console.log('🔧 SMS API Config:', {
             baseUrl: this.config.BASE_URL,
             clientId: this.config.CLIENT_ID,
             hasSecret: !!this.config.CLIENT_SECRET,
-            proxyURL: this.proxyBaseURL
+            proxyURL: this.proxyBaseURL,
+            demoMode: this.demoMode
         });
         
-        console.log('🚀 SMS Portal API Handler loaded (via proxy)');
+        if (this.demoMode) {
+            console.log('🚀 SMS Portal API Handler loaded (DEMO MODE - no proxy needed)');
+        } else {
+            console.log('🚀 SMS Portal API Handler loaded (via proxy)');
+        }
     }
     
     /**
-     * Send SMS messages using proxy server
+     * Internal method - Make fetch request with retry logic
+     */
+    async _fetchWithRetry(url, options = {}, maxRetries = 3) {
+        const maxAttempts = maxRetries + 1;
+        let lastError;
+        
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                // Add 5-second timeout to fetch
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                // Success - return immediately
+                if (response.ok) {
+                    return response;
+                }
+                
+                // Don't retry on permanent client errors (400, 401, 403, 404)
+                if (response.status >= 400 && response.status < 500) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Retry on server errors (500+) and other issues
+                if (response.status >= 500) {
+                    lastError = new Error(`Server error ${response.status}`);
+                    if (attempt < maxAttempts) {
+                        const delay = Math.pow(2, attempt - 1) * 1000; // exponential backoff
+                        console.warn(`⚠️ Attempt ${attempt}/${maxAttempts} failed. Retrying in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        continue;
+                    }
+                }
+                
+                return response;
+                
+            } catch (error) {
+                lastError = error;
+                
+                // Network errors and timeouts - retry with exponential backoff
+                if (error.name === 'AbortError' || error.message.includes('Failed to fetch')) {
+                    if (attempt < maxAttempts) {
+                        const delay = Math.pow(2, attempt - 1) * 1000; // exponential backoff: 1s, 2s, 4s
+                        console.warn(`⚠️ Attempt ${attempt}/${maxAttempts} - ${error.message}. Retrying in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        continue;
+                    }
+                }
+                
+                // Don't retry on other errors
+                throw error;
+            }
+        }
+        
+        throw lastError || new Error('Request failed after retries');
+    }
+
+    /**
+     * Send SMS messages using proxy server or demo mode
      */
     async sendSMS(message, recipients, options = {}) {
         if (!message || !message.trim()) {
@@ -37,34 +115,76 @@ class SMSAPIHandler {
             throw new Error('No recipients specified');
         }
         
-        try {
-            console.log('📤 Sending SMS via proxy...', { recipientCount: recipients.length });
-            
-            const response = await fetch(`${this.proxyBaseURL}/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: message.trim(),
-                    recipients: recipients,
-                    options: options
-                })
+        // DEMO MODE
+        if (this.demoMode) {
+            console.log('📤 [DEMO] Sending SMS...', { 
+                recipientCount: recipients.length, 
+                message: message.substring(0, 50) + '...' 
             });
             
-            const responseData = await response.json();
+            // Simulate success
+            await new Promise(r => setTimeout(r, 500));
             
-            if (response.ok && responseData.success) {
+            const result = {
+                success: true,
+                messageId: 'demo_' + Date.now(),
+                recipientCount: recipients.length,
+                creditCost: recipients.length * 1,
+                message: '[DEMO MODE] ' + message,
+                demo: true
+            };
+            
+            console.log('✅ [DEMO] SMS simulated successfully:', result);
+            return result;
+        }
+        
+        // REAL MODE - use proxy with automatic retry
+        try {
+            console.log('📤 Sending SMS via proxy (will retry up to 3 times on failure)...', { recipientCount: recipients.length });
+            
+            const response = await this._fetchWithRetry(
+                this.proxyBaseURL,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        method: 'send',
+                        message: message.trim(),
+                        recipients: recipients,
+                        senderId: this.config.SENDER_ID
+                    })
+                },
+                3 // max retries
+            );
+            
+            console.log('📡 Response status:', response.status, response.statusText);
+            
+            // Try to parse as JSON
+            let responseData;
+            try {
+                responseData = await response.json();
+            } catch (parseError) {
+                const text = await response.text();
+                console.error('❌ Failed to parse response:', text, parseError);
+                throw new Error(`Invalid response from SMS proxy: ${parseError.message}`);
+            }
+            
+            if (responseData.success) {
                 console.log('✅ SMS sent successfully via proxy:', responseData);
                 return responseData;
             } else {
                 console.error('❌ SMS send failed:', responseData);
-                throw new Error(`SMS send failed: ${responseData.error || response.status}`);
+                throw new Error(`SMS send failed: ${responseData.error || 'Unknown error'}`);
             }
             
         } catch (error) {
             console.error('🔥 SMS API Error:', error);
-            throw new Error(`Failed to send SMS: ${error.message}`);
+            const userMessage = error.message.includes('Failed to fetch')
+                ? `Cannot reach SMS proxy server. The server may be temporarily unavailable. Please try again in a moment.`
+                : error.message;
+            throw new Error(userMessage);
         }
     }
     
@@ -73,14 +193,22 @@ class SMSAPIHandler {
      */
     async getBalance() {
         try {
-            console.log('💰 Fetching SMS balance via proxy...');
+            console.log('💰 Fetching SMS balance via proxy (will retry on failure)...');
             
-            const response = await fetch(`${this.proxyBaseURL}/v1/Balance`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
+            const response = await this._fetchWithRetry(
+                this.proxyBaseURL,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        method: 'getBalance'
+                    })
+                },
+                3 // max retries
+            );
             
             const data = await response.json();
             
@@ -106,7 +234,7 @@ class SMSAPIHandler {
         } catch (error) {
             console.error('🔥 Balance API Error:', error);
             if (error.message.includes('Failed to fetch')) {
-                throw new Error('Cannot connect to SMS proxy server - please ensure it is running on port 3001');
+                throw new Error(`Cannot connect to SMS proxy server - the service may be temporarily unavailable`);
             }
             throw new Error(`Failed to get balance: ${error.message}`);
         }
@@ -173,12 +301,16 @@ class SMSAPIHandler {
         try {
             console.log('🧪 Testing SMS Portal connection via proxy...');
             
-            const response = await fetch(`${this.proxyBaseURL}/test`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
+            const response = await this._fetchWithRetry(
+                `${this.proxyBaseURL}/test`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                },
+                2 // max retries for connection test
+            );
             
             const data = await response.json();
             

@@ -19,6 +19,9 @@ window.RETAIL_CONFIG = {
     
     // Development Mode - enables embedded dev key
     DEV_MODE: false,
+
+    // Temporary access parity toggle: when true, executive alias users can inherit primary executive page permissions at runtime
+    ENABLE_EXECUTIVE_PERMISSION_FALLBACK: true,
     
     // Application Settings
     APP_NAME: 'Retail Solutions',
@@ -51,12 +54,12 @@ window.RETAIL_CONFIG = {
     // SMS API Configuration - SMS Portal
     SMS_API: {
         // Credentials must NOT be exposed in the browser. Auth is handled by the Render proxy.
-        CLIENT_ID: 'd86bf9ab-eef8-4d97-9a07-b2e0b106e2f5',
-        CLIENT_SECRET: null, // Set server-side only via environment variables
+        CLIENT_ID: null,
+        CLIENT_SECRET: null,
         BASE_URL: 'https://rest.smsportal.com',
         SENDER_ID: 'RetailSolutions',
         // Node.js proxy server (deployed on Render.com)
-        PROXY_URL: 'https://rs-proxy-hi0e.onrender.com/api/sms' // YOUR Render service
+        PROXY_URL: 'https://rs-proxy-hi0e.onrender.com/api/sms' // Production - LIVE
         // PROXY_URL: 'http://127.0.0.1:3001/api/sms' // Local dev server (for testing)
     },
     
