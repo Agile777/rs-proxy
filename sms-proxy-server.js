@@ -27,16 +27,20 @@ const SMS_CONFIG = {
 const credentials = Buffer.from(`${SMS_CONFIG.CLIENT_ID}:${SMS_CONFIG.CLIENT_SECRET}`).toString('base64');
 
 // Middleware
-// Allow requests from any localhost port during development
+// CORS Configuration - Allow all origins (secure alternative: whitelist specific domains)
+// For production, consider restricting to your actual domain:
+// const ALLOWED_ORIGINS = ['https://your-domain.com', 'https://www.your-domain.com'];
 app.use(cors({
     origin: function(origin, callback) {
         // Allow non-browser requests (like curl) with no origin
         if (!origin) return callback(null, true);
-        const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
-        return callback(isLocalhost ? null : new Error('Not allowed by CORS'), isLocalhost);
+        // For now, allow all origins (can be restricted to specific domains in production)
+        return callback(null, true);
     },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
 }));
 
 app.use(bodyParser.json());
@@ -58,8 +62,42 @@ app.get('/health', (req, res) => {
     });
 });
 
-// SMS Balance endpoint
-app.get('/api/sms/balance', async (req, res) => {
+// Unified API endpoint - routes based on method field in body
+// Supports both /api/sms and /api/sms/* patterns
+app.post('/api/sms', async (req, res) => {
+    const { method } = req.body;
+    
+    switch (method) {
+        case 'send':
+            return handleSendSMS(req, res);
+        case 'getBalance':
+            return handleGetBalance(req, res);
+        case 'getHistory':
+            return handleGetHistory(req, res);
+        case 'test':
+            return handleTestConnection(req, res);
+        default:
+            return res.status(400).json({
+                success: false,
+                error: `Unknown method: ${method}`,
+                supported_methods: ['send', 'getBalance', 'getHistory', 'test']
+            });
+    }
+});
+
+// Alternative: Support specific endpoint pattern for direct routing
+app.post('/api/sms/send', handleSendSMS);
+app.post('/api/sms/balance', handleGetBalance);
+app.post('/api/sms/history', handleGetHistory);
+app.post('/api/sms/test', handleTestConnection);
+
+// GET endpoints for convenience
+app.get('/api/sms/balance', handleGetBalance);
+app.get('/api/sms/history', handleGetHistory);
+app.get('/api/sms/test', handleTestConnection);
+
+// SMS Balance handler
+async function handleGetBalance(req, res) {
     try {
         console.log('🔍 Fetching SMS balance from SMS Portal...');
         
@@ -98,19 +136,21 @@ app.get('/api/sms/balance', async (req, res) => {
             type: 'proxy_error'
         });
     }
-});
+}
 
-// SMS History endpoint
-app.get('/api/sms/history', async (req, res) => {
+// SMS History handler
+async function handleGetHistory(req, res) {
     try {
         console.log('🔍 Fetching SMS history from SMS Portal...');
         
-        // Build query parameters
+        // Build query parameters from URL or body
         const params = new URLSearchParams();
-        if (req.query.limit) params.append('limit', req.query.limit);
-        if (req.query.offset) params.append('offset', req.query.offset);
-        if (req.query.fromDate) params.append('fromDate', req.query.fromDate);
-        if (req.query.toDate) params.append('toDate', req.query.toDate);
+        const query = req.query || req.body || {};
+        
+        if (query.limit) params.append('limit', query.limit);
+        if (query.offset) params.append('offset', query.offset);
+        if (query.fromDate) params.append('fromDate', query.fromDate);
+        if (query.toDate) params.append('toDate', query.toDate);
         
         const url = `${SMS_CONFIG.BASE_URL}/Messages${params.toString() ? `?${params.toString()}` : ''}`;
         
@@ -156,14 +196,14 @@ app.get('/api/sms/history', async (req, res) => {
             data: { error: error.message }
         });
     }
-});
+}
 
-// SMS Send endpoint
-app.post('/api/sms/send', async (req, res) => {
+// SMS Send handler
+async function handleSendSMS(req, res) {
     try {
         console.log('📤 Sending SMS via SMS Portal...');
         
-        const { message, recipients, options = {} } = req.body;
+        const { message, recipients, options = {}, senderId } = req.body;
         
         if (!message || !message.trim()) {
             return res.status(400).json({
@@ -182,7 +222,7 @@ app.post('/api/sms/send', async (req, res) => {
         // Format recipients for SMS Portal API
         const messages = recipients.map(recipient => ({
             content: message.trim(),
-            destination: formatPhoneNumber(recipient.cellphone_number || recipient.phone),
+            destination: formatPhoneNumber(recipient.cellphone_number || recipient.phone || recipient),
             ...(options.scheduledFor && { sendTime: options.scheduledFor }),
             ...(options.reference && { reference: options.reference })
         }));
@@ -190,7 +230,8 @@ app.post('/api/sms/send', async (req, res) => {
         const requestBody = {
             messages: messages,
             testMode: options.testMode || false,
-            ...(SMS_CONFIG.SENDER_ID && { senderId: 'RetailSolutions' })
+            ...(senderId && { senderId: senderId }),
+            ...(!senderId && { senderId: 'RetailSolutions' })
         };
         
         console.log(`📤 Sending ${messages.length} messages...`);
@@ -234,10 +275,10 @@ app.post('/api/sms/send', async (req, res) => {
             type: 'proxy_error'
         });
     }
-});
+}
 
-// Test connection endpoint
-app.get('/api/sms/test', async (req, res) => {
+// Test connection handler
+async function handleTestConnection(req, res) {
     try {
         console.log('🧪 Testing SMS Portal connection...');
         
@@ -280,7 +321,7 @@ app.get('/api/sms/test', async (req, res) => {
             type: 'proxy_error'
         });
     }
-});
+}
 
 // Format phone number for SMS Portal (South African format)
 function formatPhoneNumber(phone) {
