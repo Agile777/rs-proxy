@@ -48,9 +48,9 @@ class SMSAPIHandler {
         
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                // Add 5-second timeout to fetch
+                // Increased timeout to 15 seconds (was 5s, which was too short)
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
                 
                 const response = await fetch(url, {
                     ...options,
@@ -86,10 +86,17 @@ class SMSAPIHandler {
                 lastError = error;
                 
                 // Network errors and timeouts - retry with exponential backoff
-                if (error.name === 'AbortError' || error.message.includes('Failed to fetch')) {
+                if (error.name === 'AbortError') {
                     if (attempt < maxAttempts) {
-                        const delay = Math.pow(2, attempt - 1) * 1000; // exponential backoff: 1s, 2s, 4s
-                        console.warn(`⚠️ Attempt ${attempt}/${maxAttempts} - ${error.message}. Retrying in ${delay}ms...`);
+                        const delay = Math.pow(2, attempt - 1) * 1000;
+                        console.warn(`⚠️ Attempt ${attempt}/${maxAttempts} timeout. Retrying in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        continue;
+                    }
+                } else if (error.message?.includes('Failed to fetch')) {
+                    if (attempt < maxAttempts) {
+                        const delay = Math.pow(2, attempt - 1) * 1000;
+                        console.warn(`⚠️ Attempt ${attempt}/${maxAttempts} - Network error. Retrying in ${delay}ms...`);
                         await new Promise(r => setTimeout(r, delay));
                         continue;
                     }
