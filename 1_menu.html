@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="hero.css">
     <link rel="stylesheet" href="mobile-responsive.css">
     <style>
         body {
@@ -16,24 +17,9 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
 
+        /* Override hero.css to allow our custom header */
         header {
-            background: var(--color-surface, #ffffff);
-            border-bottom: 1px solid var(--color-border, #e2e8f0);
-            padding: 20px 24px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-        
-        header h1 {
-            margin: 0;
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--color-text, #1e293b);
-        }
-        
-        header h1 i {
-            color: var(--color-accent, #2563eb);
-            margin-right: 12px;
+            display: flex !important;
         }
         
         .menu-container {
@@ -117,8 +103,15 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1><i class="fas fa-th"></i>Application Menu</h1>
+    <!-- Hero Header -->
+    <header class="rs-hero-header">
+        <div class="rs-hero-header-inner">
+            <img src="logo.png" alt="RS Logo" class="rs-hero-logo">
+            <div class="rs-hero-meta">
+                <div class="rs-hero-header-title">Application Menu</div>
+                <div class="rs-hero-header-subtitle">Retail Solutions Portal</div>
+            </div>
+        </div>
     </header>
     
     <main class="menu-container">
