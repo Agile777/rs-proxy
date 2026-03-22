@@ -118,12 +118,28 @@ app.post('/api/sms', async (req, res) => {
       if (!recipients || !message) {
         return res.status(400).json({ error: 'recipients and message are required' });
       }
-      const response = await fetch(`${baseUrl}/v1/sms/send`, {
+      const normalizedRecipients = Array.isArray(recipients) ? recipients : [recipients];
+      const messages = normalizedRecipients.map((r) => {
+        const raw = (r && typeof r === 'object')
+          ? (r.cellphone_number || r.phone || r.contact_number || r.mobile || r.number || r.destination)
+          : r;
+        const digits = String(raw || '').replace(/[^0-9]/g, '');
+        const destination = digits.startsWith('0') ? `27${digits.slice(1)}` : digits;
+        return {
+          content: String(message),
+          destination
+        };
+      }).filter(m => m.destination);
+
+      if (!messages.length) {
+        return res.status(400).json({ error: 'No valid recipients after normalization' });
+      }
+
+      const response = await fetch(`${baseUrl}/v1/BulkMessages`, {
         method: 'POST',
         headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          recipients: Array.isArray(recipients) ? recipients : [recipients],
-          body: message,
+          messages,
           senderId: sender
         })
       });
@@ -134,16 +150,16 @@ app.post('/api/sms', async (req, res) => {
       }
       return res.json({
         success: true,
-        messageId: data.messageId || data.id,
+        messageId: data.messageId || data.id || data.results?.[0]?.messageId,
         batchId: data.batchId,
-        recipientCount: Array.isArray(recipients) ? recipients.length : 1,
+        recipientCount: messages.length,
         data
       });
     }
 
     // BALANCE
     if (method === 'getBalance') {
-      const response = await fetch(`${baseUrl}/v1/account/balance`, {
+      const response = await fetch(`${baseUrl}/v1/Balance`, {
         method: 'GET',
         headers: { 'Authorization': auth, 'Content-Type': 'application/json' }
       });
@@ -152,7 +168,8 @@ app.post('/api/sms', async (req, res) => {
         console.error('❌ Balance Error:', response.status, data);
         return res.status(response.status).json({ error: 'Failed to get balance', details: data });
       }
-      return res.json({ success: true, balance: data.balance, currency: 'ZAR', data });
+      const balance = data.balance ?? data.credits ?? data.available ?? 0;
+      return res.json({ success: true, balance, currency: 'ZAR', data });
     }
 
     // DELIVERY STATUS
